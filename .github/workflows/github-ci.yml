@@ -7,7 +7,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
-  statuses: write
+  statuses: writex
   checks: write
 
 jobs:
@@ -32,6 +32,9 @@ jobs:
           if [[ "$HEAD_REF" =~ ^feature/ ]]; then
             echo "branch_type=feature" >> $GITHUB_ENV
             echo "feature_name=$(echo $HEAD_REF | sed 's/feature\///')" >> $GITHUB_ENV
+          elif [[ "$HEAD_REF" =~ ^bugfix/ ]]; then
+            echo "branch_type=bugfix" >> $GITHUB_ENV
+            echo "bugfix_name=$(echo $HEAD_REF | sed 's/bugfix\///')" >> $GITHUB_ENV
           elif [[ "$HEAD_REF" =~ ^release/ ]]; then
             echo "branch_type=release" >> $GITHUB_ENV
             # Extrair a versão do nome da branch
@@ -97,6 +100,20 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Processar bugfix
+        if: env.approved == 'true' && env.branch_type == 'bugfix'
+        run: |
+          echo "Processando bugfix: ${{ env.bugfix_name }}"
+          # Fazer merge da PR para dev
+          gh pr merge ${{ github.event.pull_request.number }} \
+            --merge \
+            --auto \
+            --delete-branch \
+            --subject "fix: merge ${{ env.bugfix_name }} into dev" \
+            --body "Merge automático do bugfix ${{ env.bugfix_name }} para dev"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
       - name: Processar release
         if: env.approved == 'true' && env.branch_type == 'release'
         run: |
